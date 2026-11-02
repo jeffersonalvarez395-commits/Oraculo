@@ -6,7 +6,7 @@ import os
 ENVIAR = True
 TOKEN = os.environ.get("TELEGRAM_TOKEN", "")
 CHAT = os.environ.get("TELEGRAM_CHAT", "")
-HORAS = 24
+HORAS = 72
 MAXP = 10
 FILTRO = []
 ETA, RHO = 0.02, 0.005
@@ -36,6 +36,7 @@ fx = pd.read_csv(io.StringIO(rf.content.decode("latin-1")), on_bad_lines="skip")
 fx.columns = [c.replace("ï»¿", "") for c in fx.columns]
 fx = fx.dropna(subset=["Div", "Date", "Time", "HomeTeam", "AwayTeam"]).copy()
 fx["dt"] = pd.to_datetime(fx["Date"] + " " + fx["Time"], format="%d/%m/%Y %H:%M", errors="coerce").dt.tz_localize("Europe/London", ambiguous="NaT", nonexistent="NaT").dt.tz_convert("America/Bogota")
+print("Fixtures leídos:", len(fx), "| fechas válidas:", fx["dt"].notna().sum(), "| rango:", fx["dt"].min(), "->", fx["dt"].max())
 fx = fx[(fx["dt"] > ahora) & (fx["dt"] < ahora + pd.Timedelta(hours=HORAS))].copy()
 fx = fx[fx.Div.isin(FILTRO)] if FILTRO else fx
 fx = fx[fx.HomeTeam.isin(list(att)) & fx.AwayTeam.isin(list(att)) & fx.Div.isin(list(base))].sort_values("dt").copy()
@@ -77,5 +78,4 @@ f"📌 Lectura: {lectura(r.dif)}"
 cab = f"🔮 Oráculo · {len(fx)} partidos con datos en las próximas {HORAS} h (muestro {min(len(fx), MAXP)})\nReferencia informativa, no recomendaciones. En 17.903 partidos de prueba el mercado fue más preciso que este modelo (error 1X2: 0,9875 vs 1,0113), y lo mismo pasó en 16 ligas fuera de Europa."
 textos = [cab] + [tarjeta(r) for r in fx.head(MAXP).itertuples()]
 print("\n\n".join(textos))
-ENV = [(requests.post(f"https://api.telegram.org/bot{TOKEN}/sendMessage", json={"chat_id": CHAT, "text": t}).json().get("ok"), time.sleep(1)) for t in textos] if (ENVIAR and TOKEN) else []
-print("Enviado a Telegram:", [e[0] for e in ENV]) if ENV else print("No se envió a Telegram (ENVIAR = False o falta TOKEN).")
+ENV = [(requests.post(f"https://api.telegram.org/bot{TOKEN}/sendMessage", json={"chat_id": CHAT, "text": t}).json().get("ok"), time.sleep(1)) for t in textos] if (ENVIAR and TOKEN and len(fx) > 0) else []
